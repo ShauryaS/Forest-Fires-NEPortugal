@@ -1,0 +1,20 @@
+---
+title: "Forest Fires NE Portugal"
+author: "Shaurya Srivastava, Ishas Kekre, Anjali Viramgama"
+date: "5/18/2020"
+output:
+  html_document:
+    theme: united
+    highlight: breezedark
+---
+
+CMSC320 Final Project
+ 
+# Introduction
+
+# Data Preparation
+
+```{r}
+test <- 0
+```
+
