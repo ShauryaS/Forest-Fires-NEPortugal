@@ -36,19 +36,25 @@ library(stringr)
 
 ```{r}
 csv_file <- "forestfires.csv"
-forest_fires <- read.csv(csv_file)
+forest_fires <- read.csv(csv_file, stringsAsFactors = FALSE)
 forest_fires %>% head()
 ```
 
-##
+## Modify DataSet as Needed 
 
 ```{r}
-
+forest_fires_mod <- forest_fires %>% select(-day)
+forest_fires_mod$month <- sapply(forest_fires$month,function(x) grep(paste("(?i)",x,sep=""),month.abb))
+forest_fires_mod %>% head()
 ```
 
 # Exploratory Data Analysis
 
 # Hypothesis Testing
+
+```{r}
+
+```
 
 # Machine Learning
 
