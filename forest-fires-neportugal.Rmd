@@ -2,7 +2,7 @@
 title: "Forest Fires NE Portugal"
 author: "Shaurya Srivastava, Ishas Kekre, Anjali Viramgama"
 date: "5/18/2020"
-knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'docs/index.html')) })
 output:
   html_document:
     theme: united
