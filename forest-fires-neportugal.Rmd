@@ -43,19 +43,108 @@ forest_fires %>% head()
 ## Modify DataSet as Needed 
 
 ```{r}
-forest_fires_mod <- forest_fires %>% select(-day)
+forest_fires_mod <- forest_fires %>% select(-day) %>% mutate(id = 1:nrow(forest_fires))
 forest_fires_mod$month <- sapply(forest_fires$month,function(x) grep(paste("(?i)",x,sep=""),month.abb))
-forest_fires_mod %>% head()
+forest_fires_mod$area <- log(forest_fires_mod$area + 1)
+forest_fires_mod <- subset(forest_fires_mod, select=c(id,X:area))
+forest_fires_mod
 ```
 
 # Exploratory Data Analysis
-
+``` {r}
+forest_fires_mod %>%
+  ggplot(mapping=aes(x=as.factor(month), y= area)) +
+    geom_violin()
+```
 # Hypothesis Testing
 
 ```{r}
-
+summer_sample <- forest_fires_mod %>% filter(month > 5 & month < 9)
+xbar = nrow(summer_sample)/nrow(forest_fires_mod)
+u = 0.25
+sigma = 0.25*(1-0.25)/nrow(forest_fires_mod)
+z = (xbar-u)/(sqrt(sigma))
+pval = pnorm(z, lower.tail=FALSE)
+pval
 ```
 
 # Machine Learning
+```{r m}
+forest_learning <- forest_fires_mod %>% select(-rain,-DMC,-DC,-FFMC,-ISI,-area)
+forest_learning
+forest_output <- forest_fires_mod %>% select(id,area)
+forest_output
+```
+
+``` {r ml}
+library(caret)
+set.seed(1234, sample.kind = "Rounding")
+
+# create the cross-validation partition
+cv_ap_partition <- createFolds(forest_learning$area,
+                            k=5)
+cv_qc_partition <- createFolds(final_qc_df$Direction,
+                            k=5)
+
+# setup training parameters
+fit_control <- trainControl(
+  method = "repeatedcv",
+  number = 5,
+  repeats = 8,
+  #indexOut = cv_partition,
+  summaryFunction=twoClassSummary,
+  classProbs=TRUE,
+  savePredictions=TRUE)
+
+# a function to obtain performance data
+# (tpr and fpr) over the given cross validation
+# partitions, for the number of trees in the
+# random forest
+get_roc_data <- function(cv_partition, final_df) {
+  mean_fpr <- seq(0, 1, len=100)
+  aucs <- numeric(length(cv_partition))
+  
+  # iterate over folds
+  res <- lapply(seq_along(cv_partition),  function(i) {
+    # train the random forest 
+    fit <- train(Direction~.,
+                        data = final_df[-cv_partition[[i]],], # all but the holdout set
+                        method = "knn",
+                        trControl = fit_control,
+                        tuneLength = 20,
+                        metric="ROC")
+    
+    # make predictions on the holdout set
+    preds <- predict(fit, newdata=final_df[cv_partition[[i]],],type="prob")$up
+    
+    # compute tpr and fpr from the hold out set
+    perf <- ROCR::prediction(preds, final_df$Direction[cv_partition[[i]]]) %>%
+      ROCR::performance(measure="tpr", x.measure="fpr")
+
+    fpr <- unlist(perf@x.values)
+    tpr <- unlist(perf@y.values)
+    
+    # interpolate the roc curve over 0, 1 range
+    interp_tpr <- approxfun(fpr, tpr)(mean_fpr)
+    interp_tpr[1] <- 0.0
+    
+    # collect values for this fold
+    data_frame(fold=rep(i, length(mean_fpr)), fpr=mean_fpr, tpr=interp_tpr)
+  })
+  
+  # combine values across all folds
+  # into a single data frame
+  do.call(rbind, res)
+}
+
+# calculate area under the ROC curve
+# from tpr and fpr values across folds
+compute_auc <- function(curve_df) {
+  curve_df %>% 
+    group_by(fold) %>%
+    summarize(auc=pracma::trapz(fpr, tpr))
+}
+```
+
 
 # Conclusion
