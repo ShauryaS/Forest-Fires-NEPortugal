@@ -28,11 +28,13 @@ library(stringr)
 
 # Dataset Used
 
+The dataset used is from http://archive.ics.uci.edu/ml/datasets/Forest+Fires. It contains data about forest fires that have occurred at Northeast Portugal.
+
 # Understanding the Dataset
 
 # Data Preparation
 
-### Load the Dataset
+## Load the Dataset
 
 ```{r}
 csv_file <- "forestfires.csv"
@@ -40,26 +42,59 @@ forest_fires <- read.csv(csv_file, stringsAsFactors = FALSE)
 forest_fires %>% head()
 ```
 
-## Modify DataSet as Needed 
+## Modify Dataset as Needed 
+
+Normally, this means dropping any columns that are unnecessary and adding columns that will be useful for further data analysis.
+
+### Add a column with the log of the areas. Drop the day column. Convert the month abbreviations to numbers
 
 ```{r}
 forest_fires_mod <- forest_fires %>% 
-  mutate(log_area = log(forest_fires_mod$area + 1)) %>%
+  mutate(log_area = log(forest_fires$area + 1)) %>%
   select(-day) 
-forest_fires_mod$month <- sapply(forest_fires$month,function(x) grep(paste("(?i)",x,sep=""),month.abb))
+forest_fires_mod$month <- sapply(forest_fires_mod$month,function(x) grep(paste("(?i)",x,sep=""),month.abb))
+```
+
+### Add a column for the season
+
+The season column is based on the month column. 
+
+```{r}
+forest_fires_mod <- forest_fires_mod %>% 
+  mutate(season="winter")
+forest_fires_mod$season[forest_fires_mod$month>2 & forest_fires_mod$month<6] <- "spring"
+forest_fires_mod$season[forest_fires_mod$month>5 & forest_fires_mod$month<9] <- "summer"
+forest_fires_mod$season[forest_fires_mod$month>8 & forest_fires_mod$month<12] <- "fall"
+forest_fires_mod$season <- as.factor(forest_fires_mod$season)
+```
+
+### Add a column for the burn area level
+
+There are two burn area levels, small and large. Burn area has a small level when log(area) <= 2 and a large level when log(area) > 2.
+
+```{r}
+forest_fires_mod <- forest_fires_mod %>% 
+  mutate(burn_area_level="small")
+forest_fires_mod$burn_area_level[forest_fires_mod$log_area>2] <- "large"
+forest_fires_mod$burn_area_level <- as.factor(forest_fires_mod$burn_area_level)
+```
+
+### Display the first few rows of the new modified dataframe.
+
+```{r} 
 forest_fires_mod %>% head()
 ```
 
 # Exploratory Data Analysis
+
 ``` {r}
-forest_fires_mod %>%
-  ggplot(mapping=aes(x=wind, y=log_area)) +
-    geom_point()
+
 ```
+
 # Hypothesis Testing
 
 ```{r}
-summer_sample <- forest_fires_mod %>% filter(month > 5 & month < 9)
+summer_sample <- forest_fires_mod %>% filter(season == 'summer')
 xbar = nrow(summer_sample)/nrow(forest_fires_mod)
 u = 0.25
 sigma = 0.25*(1-0.25)/nrow(forest_fires_mod)
@@ -69,17 +104,112 @@ pval
 ```
 
 # Machine Learning
+
+## What are we trying to predict
+
+Will a forest fire burn area level be large or small?
+
+## Prepare the data set for the machine learning prediction task
+
 ```{r ml-setup}
-forest_learning <- forest_fires_mod %>% select(-rain,-DMC,-DC,-FFMC,-ISI,-area)
+forest_learning <- forest_fires_mod %>% select(-month,-X,-Y,-area,-log_area,-rain,-temp,-RH,-wind)
 forest_learning %>% head()
 ```
 
-``` {r ml-alg}
+## Prediction Algorithm
 
+``` {r ml-alg}
+library(caret)
+set.seed(1234, sample.kind = "Rounding")
+
+# create the cross-validation partition
+cv_partition <- createFolds(forest_learning$burn_area_level,k=5)
+
+# setup training parameters
+fit_control <- trainControl(
+  method = "repeatedcv",
+  number = 5,
+  repeats = 8,
+  #indexOut = cv_partition,
+  summaryFunction=twoClassSummary,
+  classProbs=TRUE,
+  savePredictions=TRUE)
+
+# a function to obtain performance data
+# (tpr and fpr) over the given cross validation
+# partitions, for the number of trees in the
+# random forest
+get_roc_data <- function(cv_partition, final_df) {
+  mean_fpr <- seq(0, 1, len=100)
+  aucs <- numeric(length(cv_partition))
+  
+  # iterate over folds
+  res <- lapply(seq_along(cv_partition),  function(i) {
+    # train the random forest 
+    fit <- train(burn_area_level~(FFMC+DMC+DC+ISI)*season,
+                        data = final_df[-cv_partition[[i]],], # all but the holdout set
+                        method = "knn",
+                        trControl = fit_control,
+                        preProcess = c("center","scale"),
+                        tuneLength = 20,
+                        metric="ROC")
+    
+    # make predictions on the holdout set
+    preds <- predict(fit, newdata=final_df[cv_partition[[i]],],type="prob")$large
+    
+    # compute tpr and fpr from the hold out set
+    perf <- ROCR::prediction(preds, final_df$burn_area_level[cv_partition[[i]]]) %>%
+      ROCR::performance(measure="tpr", x.measure="fpr")
+
+    fpr <- unlist(perf@x.values)
+    tpr <- unlist(perf@y.values)
+    
+    # interpolate the roc curve over 0, 1 range
+    interp_tpr <- approxfun(fpr, tpr)(mean_fpr)
+    interp_tpr[1] <- 0.0
+    
+    # collect values for this fold
+    data_frame(fold=rep(i, length(mean_fpr)), fpr=mean_fpr, tpr=interp_tpr)
+  })
+  
+  # combine values across all folds
+  # into a single data frame
+  do.call(rbind, res)
+}
+
+# calculate area under the ROC curve
+# from tpr and fpr values across folds
+compute_auc <- function(curve_df) {
+  curve_df %>% 
+    group_by(fold) %>%
+    summarize(auc=pracma::trapz(fpr, tpr))
+}
 ```
 
-```{r ml-execution}
+## Execute the prediction
 
+``` {r ml-execution}
+curve_df <- get_roc_data(cv_partition,forest_learning)
+auc_df <- compute_auc(curve_df)
+```
+
+## Plot AUROC
+
+```{r}
+ggplot(auc_df, aes(x=fold, y=auc)) +
+  geom_point()
+```
+
+## Plot ROC Curve
+
+```{r}
+curve_df %>%
+  group_by(fpr) %>%
+  summarize(tpr = mean(tpr)) %>%
+  ggplot(aes(x=fpr, y=tpr)) +
+    geom_line()
 ```
 
 # Conclusion
+
+# References
