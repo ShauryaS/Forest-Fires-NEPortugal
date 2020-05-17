@@ -87,22 +87,91 @@ forest_fires_mod %>% head()
 
 # Exploratory Data Analysis
 
-``` {r}
+``` {r hist}
+forest_fires_mod %>%
+  ggplot(mapping=aes(x=month),  breaks=100) +
+    ggtitle("                                                   Histogram of Months") +
+    geom_histogram(aes(y=..density..),binwidth=1.5) +
+    geom_density(alpha=.2, fill="#FF6666") +
+    scale_x_continuous(name ="Months", 
+                    breaks=seq(1,12,1))
+```
 
+``` {r pie}
+t = nrow(forest_fires_mod)
+s = nrow(forest_fires_mod %>% filter(season == 'summer'))
+sp = nrow(forest_fires_mod %>% filter(season == 'spring'))
+f = nrow(forest_fires_mod %>% filter(season == 'fall'))
+w = nrow(forest_fires_mod %>% filter(season == 'winter'))
+seasons <- data.frame(
+  group = c("Summer", "Spring", "Fall", "Winter"),
+  value = c(s/t, sp/t, f/t,w/t)
+  )
+seasons %>%
+  ggplot(aes(x="", y=value, fill=group)) + geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0) + geom_text(aes(label = paste0(round(value*100), "%")), position = position_stack(vjust = 0.5)) +
+  labs(x = NULL, y = NULL, fill = NULL, title = "                             Seasonal Fires") +
+  theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank())
+```
+
+``` {r map}
+
+forest_fires_mod %>% 
+  ggplot(aes(x=X, y=Y) ) +
+  ggtitle("                                           Forest Fire Map") +
+  stat_density_2d(aes(fill = ..level..), geom = "polygon") +
+  scale_x_continuous(name ="X-coord", 
+                    breaks=seq(1,9,1)) +
+  scale_y_continuous(name ="Y-coord", 
+                    breaks=seq(2,9,1))
 ```
 
 # Hypothesis Testing
 
-```{r}
-summer_sample <- forest_fires_mod %>% filter(season == 'summer')
-xbar = nrow(summer_sample)/nrow(forest_fires_mod)
+# H0: p = 0.25 Ha: p > 0.25 for fall
+```{r fall}
+fall_sample <- forest_fires_mod %>% filter(season == 'fall')
+xbar = nrow(fall_sample)/nrow(forest_fires_mod)
 u = 0.25
 sigma = 0.25*(1-0.25)/nrow(forest_fires_mod)
 z = (xbar-u)/(sqrt(sigma))
 pval = pnorm(z, lower.tail=FALSE)
-pval
+print(paste0("xbar: ", xbar), quote = FALSE)
+print(paste0("mean: ", u), quote = FALSE)
+print(paste0("std: ", sqrt(sigma)), quote = FALSE)
+print(paste0("z-score: ", z), quote = FALSE)
+print(paste0("p-value: ", pval), quote = FALSE)
 ```
-
+# H0: u = 20 Ha: u < 20 for temp
+```{r temp}
+xbar = mean(forest_fires_mod$temp)
+u = 20
+s = sd(forest_fires_mod$RH)
+n = nrow(forest_fires_mod)
+t = (xbar-u)/(s/sqrt(n))
+pval = pt(t, df=n-1) 
+print(paste0("xbar: ", xbar), quote = FALSE)
+print(paste0("mean: ", u), quote = FALSE)
+print(paste0("std: ", s/sqrt(n)), quote = FALSE)
+print(paste0("t-score: ", t), quote = FALSE)
+print(paste0("p-value: ", pval), quote = FALSE)
+```
+# H0: u = 20 Ha: u != 20 for area
+```{r temp}
+xbar = mean(forest_fires_mod$area)
+u = 20
+s = sd(forest_fires_mod$area)
+n = nrow(forest_fires_mod)
+t = (xbar-u)/(s/sqrt(n))
+pval = 2*pt(t, df=n-1) 
+print(paste0("xbar: ", xbar), quote = FALSE)
+print(paste0("mean: ", u), quote = FALSE)
+print(paste0("std: ", s/sqrt(n)), quote = FALSE)
+print(paste0("t-score: ", t), quote = FALSE)
+print(paste0("p-value: ", pval), quote = FALSE)
+```
 # Machine Learning
 
 ## What are we trying to predict
