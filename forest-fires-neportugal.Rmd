@@ -11,34 +11,27 @@ output:
 ---
 
 CMSC320 Final Project
-
-
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(lubridate)
-library(tidyverse)
-library(broom)
-library(gapminder)
-library(stringr)
-
-```
  
 # Introduction
-Every year, it seems that there is a disastrous fire breakout in different regions, and if we were able to predict it, it would be easy to control it and take precautions beforehand. In this page, we have tried to predict theburned area of forest fires, by using meteorological data in the Forest Fires Dataset provided by UCI's Machine Learning Repossitory.
-# Forest Fires Information
+
+Every year, there are many forest fires in regions all over the world. Recently, Australia had major fires, killing many different ecosystems and making some animals functionally extinct. Forest fires have the ablity to change the forest ecosystem vastly, for better or for worse. If we were able to predict forest fires and how much land they would burn, we can be better prepared. It would potentially be easier to control and people can take more precautions. 
+
+In this tutorial, we attempt to predict the burned area of forest fires, by using meteorological data in the Forest Fires Dataset provided by UCI's Machine Learning Repository. We also perform other data analysis to learn more about forest fires in Northeast Portugal. 
+
+# Dataset Used
+
+The dataset used is from http://archive.ics.uci.edu/ml/datasets/Forest+Fires. It contains data about forest fires that have occurred at Northeast Portugal.
+
+# Dataset Information
+
 Dataset characteristics: Multivariate
 Attribute characteristics: Real
 Number of Instances: 517
 Number of Attributes: 13
 Area: Physical
 
-# Dataset Used
-
-The dataset used is from http://archive.ics.uci.edu/ml/datasets/Forest+Fires. It contains data about forest fires that have occurred at Northeast Portugal.
-
 # Understanding the Dataset
+
 The dataset has the following attributes:
 1. X - x-axis spatial coordinate 
 2. Y - y-axis spatial coordinate
@@ -61,11 +54,24 @@ FFMC- Fine Fuel Moisture Code, calculated using temperature, humidity, wind and 
 DMC - Duff Moisture Code, calculated using temperature, relative humidity and rain.
 DC - Drought Code, calculated using temperature and rain
 ISI - Initial Spread Index, calculated using wind.
+
+# Necessary Libraries for this Tutorial
+
+These are the necessary libraries needed for reading and handling data, performing exploratory data analysis, hypothesis testing, and machine learning. 
+
+```{r libs, message=FALSE}
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(tidyverse)
+library(caret)
+```
+
 # Data Preparation
 
 ## Load the Dataset
 
-```{r}
+```{r load}
 csv_file <- "forestfires.csv"
 forest_fires <- read.csv(csv_file, stringsAsFactors = FALSE)
 forest_fires %>% head()
@@ -73,11 +79,11 @@ forest_fires %>% head()
 
 ## Modify Dataset as Needed 
 
-Normally, this means dropping any columns that are unnecessary and adding columns that will be useful for further data analysis. We add a column with log of areas for better naalysis and convert all the months, which are from Jan to Dec to their respective numbers (1 to 12). We also add a season column (Fall, Spring, Summer and Winter) based on the months, which we will use for Hypothesis testing, and we de=ivide the burn area level into two parts, big and small, depending on it's area. 
+Normally, this means dropping any columns that are unnecessary and adding columns that will be useful for further data analysis. We add a column with log of areas for better naalysis and convert all the months, which are from Jan to Dec to their respective numbers (1 to 12). We also add a season column (Fall, Spring, Summer and Winter) based on the months, which we will use for Hypothesis testing, and we divide the burn area level into two parts, big and small, depending on it's log area. 
 
 ### Add a column with the log of the areas. Drop the day column. Convert the month abbreviations to numbers
 
-```{r}
+```{r modconvert}
 forest_fires_mod <- forest_fires %>% 
   mutate(log_area = log(forest_fires$area + 1)) %>%
   select(-day) 
@@ -88,7 +94,7 @@ forest_fires_mod$month <- sapply(forest_fires_mod$month,function(x) grep(paste("
 
 The season column is based on the month column. 
 
-```{r}
+```{r modseason}
 forest_fires_mod <- forest_fires_mod %>% 
   mutate(season="winter")
 forest_fires_mod$season[forest_fires_mod$month>2 & forest_fires_mod$month<6] <- "spring"
@@ -101,7 +107,7 @@ forest_fires_mod$season <- as.factor(forest_fires_mod$season)
 
 There are two burn area levels, small and large. Burn area has a small level when log(area) <= 2 and a large level when log(area) > 2.
 
-```{r}
+```{r modelevel}
 forest_fires_mod <- forest_fires_mod %>% 
   mutate(burn_area_level="small")
 forest_fires_mod$burn_area_level[forest_fires_mod$log_area>2] <- "large"
@@ -110,12 +116,15 @@ forest_fires_mod$burn_area_level <- as.factor(forest_fires_mod$burn_area_level)
 
 ### Display the first few rows of the new modified dataframe.
 
-```{r} 
+```{r head} 
 forest_fires_mod %>% head()
 ```
 
 # Exploratory Data Analysis
-We first try to find if there is any correaltion between density and months.
+
+## Histogram Showing Density of Forest Fires occurring over Months
+
+We first try to find if there is any correlation between density of forest fires occurring over months.
 
 ``` {r hist}
 forest_fires_mod %>%
@@ -127,7 +136,12 @@ forest_fires_mod %>%
                     breaks=seq(1,12,1))
 ```
 
-There seems to be a higher density between months July to October, i.e. in summer and fall. To further confirm this, we plot a pie chat showing the % of total fires per season.
+There seems to be a higher density between months July to October, i.e. in summer and fall at Northeat Portugal. 
+
+## Pie Chart Displaying the Percent of Total Fires per Season
+
+To further confirm that forest fires occur more in the summer and fall, we plot a pie chat showing the percent of total fires per season.
+
 ``` {r pie}
 t = nrow(forest_fires_mod)
 s = nrow(forest_fires_mod %>% filter(season == 'summer'))
@@ -147,8 +161,77 @@ seasons %>%
           axis.ticks = element_blank())
 ```
 
-This clearly shows that the tendency of a forest fire breaking out in Summer and Fall is higher than the other 2 seasons. 
-We plot another graph to show what areas of the forest are most affected by forest fires, in X and Y coordinates.
+This clearly shows that the tendency of a forest fire breaking out in Summer and Fall is higher than the other 2 seasons for Northeast Portugal. 
+
+## Scatter Plot showing Log Burn Area vs Season
+
+``` {r scatter-season}
+forest_fires_mod %>%
+  ggplot(aes(x=season,y=log_area)) +
+    ggtitle("                                           Log Burn Area vs Season") + 
+    labs(x="Season", y="Log Burn Area") +
+    geom_point()
+```
+
+This shows that summer and fall have high log burn areas that spring and winter. There is a very slight correlation with season and log burn area for Northeast Portugal.
+
+## Scatter Plots showing Burn Area Level vs the Different FWI Indices colored by Season
+
+We know that the FWI indices are calculated using combinations of other indices and Tempurature, Wind Speed, Relative Humidity, and Rain. We would like to observe whether any of these indices have a correlation with the Burn Area Level grouped by Season.
+
+### Scatter plot for Burn Level vs FFMC colored by Season
+
+``` {r scatter-ffmc}
+forest_fires_mod %>%
+  ggplot(aes(x=FFMC,y=burn_area_level, color = season)) +
+    ggtitle("                        Burn Level vs FFMC colored by Season") + 
+    labs(x="FFMC", y="Burn Area Level") +
+    geom_point()
+```
+
+From this plot, it is observed that low FFMC correlates with small burn area level. FFMC has a very slight correlation with burn area level. Grouping by season doesn't change the correlation, so season is not an interaction for FFMC.
+
+### Scatter plot for Burn Level vs DMC colored by Season
+
+``` {r scatter-dmc}
+forest_fires_mod %>%
+  ggplot(aes(x=DMC,y=burn_area_level, color = season)) +
+    ggtitle("                        Burn Level vs DMC colored by Season") + 
+    labs(x="DMC", y="Burn Area Level") +
+    geom_point()
+```
+
+We observe that DMC grouped by season has no noticeable correlation with burn area level. Grouping by season doesn't change the correlation, so season is not an interaction for DMC.
+
+
+### Scatter plot for Burn Level vs DC colored by Season
+
+``` {r scatter-dc}
+forest_fires_mod %>%
+  ggplot(aes(x=DC,y=burn_area_level, color = season)) +
+    ggtitle("                        Burn Level vs DC colored by Season") + 
+    labs(x="DC", y="Burn Area Level") +
+    geom_point()
+```
+
+We observe that DC grouped by season has no noticeable correlation with burn area level. Grouping by season doesn't change the correlation, so season is not an interaction for DC.
+
+### Scatter plot for Burn Level vs ISI colored by Season
+
+``` {r scatter-isi}
+forest_fires_mod %>%
+  ggplot(aes(x=ISI,y=burn_area_level, color = season)) +
+    ggtitle("                        Burn Level vs ISI colored by Season") + 
+    labs(x="ISI", y="Burn Area Level") +
+    geom_point()
+```
+
+We observe that ISI grouped by season has no noticeable correlation with burn area level. Grouping by season doesn't change the correlation, so season is not an interaction for ISI.
+
+## Areas of Forest Most Affected by Forest Fires
+
+Just for fun, we plot another graph to show what areas of the forest are most affected by forest fires, in X and Y coordinates.
+
 ``` {r map}
 
 forest_fires_mod %>% 
@@ -162,10 +245,14 @@ forest_fires_mod %>%
 ```
 
 # Hypothesis Testing
+
+## First Hypothesis Test
+
 For our hypothesis testing, we assumed that the probability of a forest fire occuring in every season is equal, i.e. it is 0.25 for summer, spring, winter and fall.
 We test it out for Fall specifically, assuming p = 0.25
-# H0: p = 0.25 Ha: p > 0.25 for fall
-```{r fall}
+
+### H0: p = 0.25 Ha: p > 0.25 for fall
+```{r hfall}
 fall_sample <- forest_fires_mod %>% filter(season == 'fall')
 xbar = nrow(fall_sample)/nrow(forest_fires_mod)
 u = 0.25
@@ -178,8 +265,14 @@ print(paste0("std: ", sqrt(sigma)), quote = FALSE)
 print(paste0("z-score: ", z), quote = FALSE)
 print(paste0("p-value: ", pval), quote = FALSE)
 ```
-# H0: u = 20 Ha: u < 20 for temp
-```{r temp}
+
+Based on the results, we reject $H_o$. $pvalue = 1.208e-9 < \alpha = 0.05$, meaning that the probability is within rejection level $\alpha$. Therefore, there is enough evidence to reject $H_o$.
+
+## Second Hypothesis Test
+
+### H0: u = 20 Ha: u < 20 for temp
+
+```{r htemp}
 xbar = mean(forest_fires_mod$temp)
 u = 20
 s = sd(forest_fires_mod$RH)
@@ -192,8 +285,12 @@ print(paste0("std: ", s/sqrt(n)), quote = FALSE)
 print(paste0("t-score: ", t), quote = FALSE)
 print(paste0("p-value: ", pval), quote = FALSE)
 ```
-# H0: u = 20 Ha: u != 20 for area
-```{r temp}
+
+## Third Hypothesis Test
+
+### H0: u = 20 Ha: u != 20 for area
+
+```{r harea}
 xbar = mean(forest_fires_mod$area)
 u = 20
 s = sd(forest_fires_mod$area)
@@ -206,13 +303,18 @@ print(paste0("std: ", s/sqrt(n)), quote = FALSE)
 print(paste0("t-score: ", t), quote = FALSE)
 print(paste0("p-value: ", pval), quote = FALSE)
 ```
+
 # Machine Learning
+
+Based on the attributes of the dataset, we know that the different FWI Indices provide different information of Forest Fires, and when combined, they tell fire intensity. There is no noticeable or strong correlation with any of the indices and burn area level. However, as the indices are used to calculate the fire intensity, we try to see if using these indices can predict burn area level.
 
 ## What are we trying to predict
 
 Will a forest fire burn area level be large or small?
 
 ## Prepare the data set for the machine learning prediction task
+
+Drop all the columns except for the FWI Indices, Season, and the Burn Area Level.
 
 ```{r ml-setup}
 forest_learning <- forest_fires_mod %>% select(-month,-X,-Y,-area,-log_area,-rain,-temp,-RH,-wind)
@@ -221,8 +323,9 @@ forest_learning %>% head()
 
 ## Prediction Algorithm
 
-``` {r ml-alg}
-library(caret)
+This code will set up the cross validation experiment with knn algorithm from the Caret Library. It utilizes repeatedcv, creating 5 folds and repeating the experiment 5 times. The experiment provides ROC values and a method to calculate the AUROC values. 
+
+``` {r ml-alg, message=FALSE, warning=FALSE}
 set.seed(1234, sample.kind = "Rounding")
 
 # create the cross-validation partition
@@ -232,7 +335,7 @@ cv_partition <- createFolds(forest_learning$burn_area_level,k=5)
 fit_control <- trainControl(
   method = "repeatedcv",
   number = 5,
-  repeats = 8,
+  repeats = 5,
   #indexOut = cv_partition,
   summaryFunction=twoClassSummary,
   classProbs=TRUE,
@@ -249,7 +352,7 @@ get_roc_data <- function(cv_partition, final_df) {
   # iterate over folds
   res <- lapply(seq_along(cv_partition),  function(i) {
     # train the random forest 
-    fit <- train(burn_area_level~(FFMC+DMC+DC+ISI)*season,
+    fit <- train(burn_area_level~.,
                         data = final_df[-cv_partition[[i]],], # all but the holdout set
                         method = "knn",
                         trControl = fit_control,
@@ -291,7 +394,9 @@ compute_auc <- function(curve_df) {
 
 ## Execute the prediction
 
-``` {r ml-execution}
+We will get performance data from using our machine learning algorithm. 
+
+``` {r ml-execution, message=FALSE, warning=FALSE}
 curve_df <- get_roc_data(cv_partition,forest_learning)
 auc_df <- compute_auc(curve_df)
 ```
@@ -303,6 +408,8 @@ ggplot(auc_df, aes(x=fold, y=auc)) +
   geom_point()
 ```
 
+This tells us the area under the ROC curve for each fold. The AUROC values are on the lower end for each fold, mostly less than 0.5. The low values convey that the model used isn't good for the prediction of the Burn Area Level.
+
 ## Plot ROC Curve
 
 ```{r}
@@ -310,9 +417,30 @@ curve_df %>%
   group_by(fpr) %>%
   summarize(tpr = mean(tpr)) %>%
   ggplot(aes(x=fpr, y=tpr)) +
-    geom_line()
+    geom_line() +
+    labs(title = "                    ROC curves",
+         x = "False positive rate",
+         y = "True positive rate")
 ```
 
-# Conclusion
-We conclude using ML,we can predict the area that will be affected by forest fires. We also conclude that the fires are slightly dependent on the season and the month.
+## Machine Learning Conclusion
+
+The ROC Model is a straight line, meaning that this model/algorithm is not good for predicting the Burn Area Level. 
+
+## Tutorial Conclusion
+
+In this tutorial, we went over how to perform data analysis on the Forest Fires Northeast Portugal dataset, provided by the UCI database. We performed Exploratory Data Analysis, Hypothesis Testing, and Machine Learning. These are all important tools of analysis to get a better understanding of the data. 
+
+From the Exploratory Data Analysis, we learn that the FWI indices do not have much of a correlation with Burn Area Level, except for FFMC which has a very small correlation. It is also learned that season has a slight correlation with Burn Area Level. We also learn about what areas of Northeast Portugal do Forest Fires occur and that they mostly happen in Spring and Summer. 
+
+From the Hypothesis Testing, [Fill this out].
+
+From the Machine Learning, we learn that our model isn't good at predicting the Burn Area Level. In fact, with further analysis of the data, we realize that possibly no traditional machine learning algorithm can accurately predict Burn Area Level. We should look into Neural Networks or other machine learning algorithms. We could probably use this dataset and traditional machine learning algorithms to predict another attribute other than Burn Area Level, such as what season did a forest fire occur based on the FWI Indices and other meteorological data.
+
 # References
+
+Dataset - [Cortez and Morais, 2007] P. Cortez and A. Morais. A Data Mining Approach to Predict Forest Fires using Meteorological Data. In J. Neves, M. F. Santos and J. Machado Eds., New Trends in Artificial Intelligence, Proceedings of the 13th EPIA 2007 - Portuguese Conference on Artificial Intelligence, December, Guimarães, Portugal, pp. 512-523, 2007. APPIA, ISBN-13 978-989-95618-0-9. Available at: [http://archive.ics.uci.edu/ml/datasets/Forest+Fires]
+
+To Learn Additional Data Science Concepts - https://www.hcbravo.org/IntroDataSci/bookdown-notes/
+
+
