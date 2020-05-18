@@ -135,7 +135,7 @@ forest_fires_mod %>%
                     breaks=seq(1,12,1))
 ```
 
-There seems to be a higher density between months July to October, i.e. in summer and fall at Northeat Portugal. 
+There seems to be a higher density between months July to October, i.e. in summer and fall at Northeast Portugal. 
 
 ## Pie Chart Displaying the Percent of Total Fires per Season
 
@@ -247,7 +247,7 @@ forest_fires_mod %>%
 
 ## First Hypothesis Test
 
-For our hypothesis testing, we assumed that the probability of a forest fire occuring in every season is equal, i.e. it is 0.25 for summer, spring, winter and fall.
+For our first hypothesis test, we assumed that the probability of a forest fire occuring in every season is equal, i.e. it is 0.25 for summer, spring, winter and fall.
 We test it out for Fall specifically, assuming p = 0.25
 
 ### H0: p = 0.25 Ha: p > 0.25 for fall
@@ -265,12 +265,13 @@ print(paste0("z-score: ", z), quote = FALSE)
 print(paste0("p-value: ", pval), quote = FALSE)
 ```
 
-Based on the results, we reject $H_o$. $pvalue = 1.208e-9 < \alpha = 0.05$, meaning that the probability is within rejection level $\alpha$. Therefore, there is enough evidence to reject $H_o$.
+Based on the results, we reject $H_o$. $pvalue = 1.208e-9 < \alpha = 0.05$, meaning that the probability is within rejection level $\alpha$. Therefore, there is enough evidence to reject $H_o$ and show that the true proportion of fires occuring in fall per year is greater than 0.25.
 
 ## Second Hypothesis Test
 
-### H0: u = 20 Ha: u < 20 for temp
+For our second hypothesis test, we ran a test to see if the true mean temperature of forest fires in the area is 20 degrees. Since the sample mean was less than 20, we conducted a one-tailed lower t-test to see if the true mean could be 20.
 
+### H0: u = 20 Ha: u < 20 for temp
 ```{r htemp}
 xbar = mean(forest_fires_mod$temp)
 u = 20
@@ -285,10 +286,14 @@ print(paste0("t-score: ", t), quote = FALSE)
 print(paste0("p-value: ", pval), quote = FALSE)
 ```
 
+Based on the results, there is not enough evidence to reject $H_o$. $pvalue = 0.06... > \alpha = 0.05$, meaning that the probability is greater than the rejection level $\alpha$. Therefore it is possible enough that the sample mean would occur, assuming the true mean temperature is 20 degrees.
+
+
 ## Third Hypothesis Test
 
-### H0: u = 20 Ha: u != 20 for area
+For our third hypothesis test, we ran a test to see if the true mean area of forest fires in the area is 20 hectare units. For this test we are showing how to conduct a two-tailed t-test to see if the true mean could be 20.
 
+### H0: u = 20 Ha: u != 20 for area
 ```{r harea}
 xbar = mean(forest_fires_mod$area)
 u = 20
@@ -302,6 +307,8 @@ print(paste0("std: ", s/sqrt(n)), quote = FALSE)
 print(paste0("t-score: ", t), quote = FALSE)
 print(paste0("p-value: ", pval), quote = FALSE)
 ```
+
+Based on the results, there is enough evidence to reject $H_o$. $pvalue = 0.01... < \alpha = 0.05$, meaning that the probability is less than the rejection level $\alpha$. Therefore it is extremely unlikey that the sample mean would occur, assuming the true mean temperature is 20 degrees. We have enough evidence to show that the true mean area is not 20.
 
 # Machine Learning
 
@@ -432,7 +439,7 @@ In this tutorial, we went over how to perform data analysis on the Forest Fires 
 
 From the Exploratory Data Analysis, we learn that the FWI indices do not have much of a correlation with Burn Area Level, except for FFMC which has a very small correlation. It is also learned that season has a slight correlation with Burn Area Level. We also learn about what areas of Northeast Portugal do Forest Fires occur and that they mostly happen in Spring and Summer. 
 
-From the Hypothesis Testing, [Fill this out].
+From the Hypothesis Testing, we showed different techniques to perform hypothesis tests on samples of data. We showed how to come up with null and alternate hypothesis, conduct tests on the sample data, and how to understand and analyse those tests. In real life samples, there are a lot of unknowns, and these hypothesis tests are important in understanding data and making assumptions about your data.
 
 From the Machine Learning, we learn that our model isn't good at predicting the Burn Area Level. In fact, with further analysis of the data, we realize that possibly no traditional machine learning algorithm can accurately predict Burn Area Level. We should look into Neural Networks or other machine learning algorithms. We could probably use this dataset and traditional machine learning algorithms to predict another attribute other than Burn Area Level, such as what season did a forest fire occur based on the FWI Indices and other meteorological data.
 
@@ -442,4 +449,7 @@ Dataset - [Cortez and Morais, 2007] P. Cortez and A. Morais. A Data Mining Appro
 
 To Learn Additional Data Science Concepts - https://www.hcbravo.org/IntroDataSci/bookdown-notes/
 
+Tutorial on ggplot by r-statistics.co - http://r-statistics.co/Complete-Ggplot2-Tutorial-Part1-With-R-Code.html
+ 
+Machine Learning using caret - http://www.rebeccabarter.com/blog/2017-11-17-caret_tutorial/
 
