@@ -11,7 +11,9 @@ output:
 ---
 
 CMSC320 Final Project
- 
+
+![](forestfire.jpg)
+
 # Introduction
 
 Every year, there are many forest fires in regions all over the world. Recently, Australia had major fires, killing many different ecosystems and making some animals functionally extinct. Forest fires have the ablity to change the forest ecosystem vastly, for better or for worse. If we were able to predict forest fires and how much land they would burn, we can be better prepared. It would potentially be easier to control and people can take more precautions. 
