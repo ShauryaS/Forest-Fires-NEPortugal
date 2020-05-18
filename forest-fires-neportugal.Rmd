@@ -12,6 +12,8 @@ output:
 
 CMSC320 Final Project
 
+
+
 ```{r}
 library(dplyr)
 library(tidyr)
@@ -20,18 +22,45 @@ library(tidyverse)
 library(broom)
 library(gapminder)
 library(stringr)
+
 ```
  
 # Introduction
-
+Every year, it seems that there is a disastrous fire breakout in different regions, and if we were able to predict it, it would be easy to control it and take precautions beforehand. In this page, we have tried to predict theburned area of forest fires, by using meteorological data in the Forest Fires Dataset provided by UCI's Machine Learning Repossitory.
 # Forest Fires Information
+Dataset characteristics: Multivariate
+Attribute characteristics: Real
+Number of Instances: 517
+Number of Attributes: 13
+Area: Physical
 
 # Dataset Used
 
 The dataset used is from http://archive.ics.uci.edu/ml/datasets/Forest+Fires. It contains data about forest fires that have occurred at Northeast Portugal.
 
 # Understanding the Dataset
+The dataset has the following attributes:
+1. X - x-axis spatial coordinate 
+2. Y - y-axis spatial coordinate
+3. month - month of the year: 'jan' to 'dec'
+4. day - day of the week: 'mon' to 'sun'
+5. FFMC - FFMC index from the FWI system: 18.7 to 96.20
+6. DMC - DMC index from the FWI system: 1.1 to 291.3
+7. DC - DC index from the FWI system: 7.9 to 860.6
+8. ISI - ISI index from the FWI system: 0.0 to 56.10
+9. temp - temperature in Celsius degrees: 2.2 to 33.30
+10. RH - relative humidity in %: 15.0 to 100
+11. wind - wind speed in km/h: 0.40 to 9.40
+12. rain - outside rain in mm/m2 : 0.0 to 6.4
+13. area - the burned area of the forest (in ha): 0.00 to 1090.84
+(this output variable is very skewed towards 0.0, thus it may make
+sense to model with the logarithm transform).
 
+Here is what different components of the FWI system mean:
+FFMC- Fine Fuel Moisture Code, calculated using temperature, humidity, wind and rain.
+DMC - Duff Moisture Code, calculated using temperature, relative humidity and rain.
+DC - Drought Code, calculated using temperature and rain
+ISI - Initial Spread Index, calculated using wind.
 # Data Preparation
 
 ## Load the Dataset
@@ -44,7 +73,7 @@ forest_fires %>% head()
 
 ## Modify Dataset as Needed 
 
-Normally, this means dropping any columns that are unnecessary and adding columns that will be useful for further data analysis.
+Normally, this means dropping any columns that are unnecessary and adding columns that will be useful for further data analysis. We add a column with log of areas for better naalysis and convert all the months, which are from Jan to Dec to their respective numbers (1 to 12). We also add a season column (Fall, Spring, Summer and Winter) based on the months, which we will use for Hypothesis testing, and we de=ivide the burn area level into two parts, big and small, depending on it's area. 
 
 ### Add a column with the log of the areas. Drop the day column. Convert the month abbreviations to numbers
 
@@ -86,6 +115,7 @@ forest_fires_mod %>% head()
 ```
 
 # Exploratory Data Analysis
+We first try to find if there is any correaltion between density and months.
 
 ``` {r hist}
 forest_fires_mod %>%
@@ -97,6 +127,7 @@ forest_fires_mod %>%
                     breaks=seq(1,12,1))
 ```
 
+There seems to be a higher density between months July to October, i.e. in summer and fall. To further confirm this, we plot a pie chat showing the % of total fires per season.
 ``` {r pie}
 t = nrow(forest_fires_mod)
 s = nrow(forest_fires_mod %>% filter(season == 'summer'))
@@ -116,6 +147,8 @@ seasons %>%
           axis.ticks = element_blank())
 ```
 
+This clearly shows that the tendency of a forest fire breaking out in Summer and Fall is higher than the other 2 seasons. 
+We plot another graph to show what areas of the forest are most affected by forest fires, in X and Y coordinates.
 ``` {r map}
 
 forest_fires_mod %>% 
@@ -129,7 +162,8 @@ forest_fires_mod %>%
 ```
 
 # Hypothesis Testing
-
+For our hypothesis testing, we assumed that the probability of a forest fire occuring in every season is equal, i.e. it is 0.25 for summer, spring, winter and fall.
+We test it out for Fall specifically, assuming p = 0.25
 # H0: p = 0.25 Ha: p > 0.25 for fall
 ```{r fall}
 fall_sample <- forest_fires_mod %>% filter(season == 'fall')
@@ -280,5 +314,5 @@ curve_df %>%
 ```
 
 # Conclusion
-
+We conclude using ML,we can predict the area that will be affected by forest fires. We also conclude that the fires are slightly dependent on the season and the month.
 # References
